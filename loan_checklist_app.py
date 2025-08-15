@@ -164,7 +164,7 @@ If Low Doc:
 
     with st.spinner("Generating checklist..."):
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-5",
             messages=[
                 {"role": "system", "content": "You are an expert mortgage broker assistant."},
                 {"role": "user", "content": prompt}
