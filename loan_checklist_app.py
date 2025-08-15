@@ -168,8 +168,7 @@ If Low Doc:
             messages=[
                 {"role": "system", "content": "You are an expert mortgage broker assistant."},
                 {"role": "user", "content": prompt}
-            ],
-            temperature=0.2
+            ]
         )
         checklist = response.choices[0].message.content
 
