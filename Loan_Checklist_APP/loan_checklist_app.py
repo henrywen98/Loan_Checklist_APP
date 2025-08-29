@@ -101,3 +101,4 @@ if submitted:
    st.markdown("### ✅ Checklist Output")
    st.code(checklist, language="markdown")
    st.download_button("Download Checklist", checklist, file_name=f"{client_name}_LoanChecklist.txt")
+   
