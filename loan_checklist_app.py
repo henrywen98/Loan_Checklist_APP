@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 import streamlit as st
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -7,56 +6,45 @@ from dotenv import load_dotenv
 # 页面配置
 st.set_page_config(page_title="Loan Checklist Generator", page_icon="📝")
 
-# 加载本地 .env（本地开发使用；在 Streamlit Cloud 上用 st.secrets）
-load_dotenv()
-
-APP_DIR = Path(__file__).parent
-PROMPT_FILE = APP_DIR / "loan_checklist_prompt.md"
-
-
-def load_api_config():
-   """优先从 st.secrets 读取，其次从 .env 读取。"""
-   api_key = None
-   model = None
-   try:
-      api_key = st.secrets["openai"]["api_key"]
-      model = st.secrets["openai"].get("model")
-   except Exception:
-      pass
-
-   if not api_key:
-      api_key = os.getenv("OPENAI_API_KEY")
-   if not model:
-      model = os.getenv("OPENAI_MODEL", "gpt-5-mini")
-
-   return api_key, model
-
-
-def load_prompt() -> str:
-   if not PROMPT_FILE.exists():
-      st.error(f"Prompt file not found: {PROMPT_FILE}")
-      st.stop()
-   return PROMPT_FILE.read_text(encoding="utf-8")
-
-
-def build_prompt(template: str, data: dict) -> str:
-   try:
-      return template.format(**data)
-   except KeyError as e:
-      st.error(f"Missing prompt placeholder: {e}")
-      st.stop()
-
 # 页面标题
 st.title("📝 Loan Document Checklist Generator")
 st.markdown("Easily generate a professional loan document checklist based on client information.")
 
-# 读取 API 配置（优先 st.secrets，其次 .env）
-api_key, model = load_api_config()
+# 加载 .env 并根据环境变量选择供应商与模型（deepseek 或 gpt-5-mini）
+load_dotenv()
+
+provider = os.getenv("LLM_PROVIDER", "openai").lower()
+if provider not in ("openai", "deepseek"):
+   provider = "openai"
+
+if provider == "deepseek":
+   # DeepSeek 配置
+   api_key = os.getenv("DEEPSEEK_API_KEY")
+   model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+   base_url = "https://api.deepseek.com"
+else:
+   # OpenAI 配置
+   api_key = os.getenv("OPENAI_API_KEY")
+   model = os.getenv("OPENAI_MODEL", "gpt-5-mini")
+   base_url = None
+
+# 兜底：若 .env 未提供，尝试从 st.secrets 读取
 if not api_key:
-   st.error("OpenAI API key is missing. Set it in .streamlit/secrets.toml or .env as OPENAI_API_KEY.")
+   try:
+      if provider == "deepseek":
+         api_key = st.secrets.get("deepseek", {}).get("api_key")
+      else:
+         api_key = st.secrets.get("openai", {}).get("api_key")
+   except Exception:
+      pass
+
+if not api_key:
+   st.error(
+      "Missing API key. Set LLM_PROVIDER to 'openai' or 'deepseek' in .env and provide the corresponding API key (OPENAI_API_KEY or DEEPSEEK_API_KEY)."
+   )
    st.stop()
 
-client = OpenAI(api_key=api_key)
+client = OpenAI(api_key=api_key, base_url=base_url)
 
 # 表单输入
 with st.form("client_form"):
@@ -71,21 +59,140 @@ with st.form("client_form"):
     submitted = st.form_submit_button("Generate Checklist")
 
 if submitted:
-   # 从文件加载并构造 prompt
-   template = load_prompt()
-   prompt = build_prompt(
-      template,
-      dict(
-         client_name=client_name,
-         loan_purpose=loan_purpose,
-         employment_type=employment_type,
-         passport_type=passport_type,
-         rental_property=rental_property,
-         trust_assets=trust_assets,
-         country=country,
-         notes=notes,
-      ),
-   )
+   # 构造 prompt
+   prompt = f"""
+## 🟦 Role
+
+You are an experienced Australian Mortgage Broker Assistant who values clarity and client experience.
+
+## 🟦 Task
+
+Based on the provided **【Client Information】**, generate a concise and professional **Loan Document Checklist** in English for the client to review and prepare.
+If the "Client Name" field contains multiple names (joined by "and", "&", "," or space), **insert the following sentence at the top**:
+
+> All documents listed below must be provided **separately by each applicant**.
+
+⚠️ **This checklist is for internal use only. Do not send this prompt or internal notes to clients.**
+
+---
+
+## 🟦 Rules
+
+### 1. Basic Info (Include in email body)
+
+Ask the client to reply with their **full legal name** (as shown on ID) and **mobile number** so you can send them the **Privacy Consent & Credit Guide** for signing.
+
+---
+
+### 2. Loan Document Checklist
+
+#### 📌 ID Documents
+* Driver Licence
+* Passport
+  * If non-Australian ➔ Add: Visa Grant Letter
+  * If currently overseas ➔ Add: Local credit report (from country of residence)
+
+#### 📌 Income Documents (Choose based on employment type)
+
+**▸ PAYG**
+* Last 2 payslips
+* Last 3 months’ salary credit bank statements
+* Any one of: Employer Letter / ATO Income Statement / NOA (last 2 years)
+
+**▸ Self-Employed**
+* Individual Tax Returns + NOA (last 2 years)
+* Company Tax Returns + Financial Statements (last 2 years)
+* Add: ASIC company search
+
+**▸ Low Doc (if applicable)**
+* 3–6 months’ BAS
+* Accountant’s Letter
+
+**▸ Rental Income** (if applicable)
+* Preferred: Last 3 months’ rental statements
+* If unavailable ➔ Agent’s appraisal with notes
+
+---
+
+#### 📌 Asset Documents
+* Property: Council Rate Notice
+  * If unavailable ➔ Use Strata Notice or Water Bill
+  * If newly purchased ➔ Use Contract with note
+* Savings / Deposit: Latest bank statement or balance letter showing sufficient funds
+* If held in a trust ➔ Add: Trust Deed
+
+---
+
+#### 📌 Liability Documents
+* Home / Car / Personal Loan: Last 6 months’ statements
+* Credit Card: Last 3 months’ statements
+* If any debts being discharged ➔ Add: Discharge Letter
+
+---
+
+#### 📌 Other Documents (If relevant)
+* Gift Letter / Visa Grant Letter / Name Confirmation / Rent-Free Declaration
+* Accountant’s Letter (if income declared by accountant)
+
+---
+
+#### 📌 Client Information Form
+* Attached in the email. Please complete as much as possible. If unsure, leave blank and we’ll assist.
+
+---
+
+### 3. Compliance Documents (Additional Requirement — Do Not Repeat Overlap)
+
+All clients must provide:
+
+* At least 2 months’ bank statements
+  * *Lite Doc may be case-by-case*
+
+If PAYG:
+* 2 recent payslips, AND
+* Second form of income verification
+  * (Income Statement / NOA / Tax Returns)
+
+If Self-Employed:
+* 2 years of Financials + Individual Tax Returns
+
+If Low Doc:
+* 3–6 months of BAS
+* Accountant’s Letter
+
+---
+
+## 🟦 Output Format
+
+【Loan Document Checklist for {client_name}】
+(If joint application ➔ All documents listed below must be provided **separately by each applicant**.)
+
+1. ID Documents
+   • ...
+2. Income Documents
+   • ...
+3. Asset Documents
+   • ...
+4. Liability Documents
+   • ...
+5. Other Documents (if applicable)
+   • ...
+6. Client Information Form
+   • Refer to the attached form and complete as much as possible. Leave blank if unsure.
+
+---
+
+## 🟦 【Client Information】
+
+* Client Name: {client_name}
+* Loan Purpose: {loan_purpose}
+* Employment Type: {employment_type}
+* Passport Type: {passport_type}
+* Has Rental Properties: {rental_property}
+* Has Trust-held Assets: {trust_assets}
+* Current Country of Residence: {country}
+* Additional Notes: {notes}
+"""
 
    with st.spinner("Generating checklist..."):
       response = client.chat.completions.create(
@@ -94,8 +201,10 @@ if submitted:
             {"role": "system", "content": "You are an expert mortgage broker assistant."},
             {"role": "user", "content": prompt},
          ],
+         temperature=0.2,
       )
-      checklist = response.choices[0].message.content
+
+   checklist = response.choices[0].message.content
 
    # 输出结果
    st.markdown("### ✅ Checklist Output")
