@@ -27,7 +27,7 @@ def load_api_config():
    if not api_key:
       api_key = os.getenv("OPENAI_API_KEY")
    if not model:
-      model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+      model = os.getenv("OPENAI_MODEL", "gpt-5-mini")
 
    return api_key, model
 
