@@ -30,13 +30,14 @@ Ask the client to reply with their **full legal name** (as shown on ID) and **mo
 
 **▸ PAYG**  
 * Last 2 payslips  
-* Last 3 months’ salary credit bank statements  
-* Any one of: Employer Letter / ATO Income Statement / NOA (last 2 years)  
+* Any one of: Employer Letter / ATO Income Statement / NOA (last year)  
+* At least the last 2 months of bank account statements
 
 **▸ Self-Employed**  
 * Individual Tax Returns + NOA (last 2 years)  
-* Company Tax Returns + Financial Statements (last 2 years)  
-* Add: ASIC company search  
+* Company Tax Returns + Financial Statements (last 2 years)
+* Add: ASIC company search
+* At least the last 2 months of bank account statements
 
 **▸ Rental Income** (if applicable)  
 * Preferred: Last 3 months’ rental statements  
