@@ -115,6 +115,24 @@ with st.expander("🔧 Current Configuration", expanded=False):
         st.write(f"**Base URL:** {base_url}")
     st.write(f"**API Key:** {'✅ Set' if api_key else '❌ Not Set'}")
 
+# 使用说明
+st.markdown("---")
+with st.expander("📋 How to Use", expanded=False):
+    st.markdown("""
+    ### Multiple Applicants
+    - For **two applicants**, enter names as: `App_1 & App_2`
+    - If applicants have **different employment types**, specify in the **Additional Notes** section
+    - Example: `App_1 is self-employed and App_2 is PAYG`
+    
+    ### Tips
+    - The system will generate a customized checklist based on your specific inputs
+    - Use the Additional Notes field for any special circumstances or requirements
+    
+    ### Contact
+    📧 If you have any questions or suggestions for improvement, please email:  
+    [henrywen98@gmail.com](mailto:henrywen98@gmail.com)
+    """)
+
 # 表单输入
 with st.form("client_form"):
     client_name = st.text_input("Client Name")
@@ -157,12 +175,3 @@ if submitted:
     st.markdown("### ✅ Checklist Output")
     st.code(checklist, language="markdown")
     st.download_button("Download Checklist", checklist, file_name=f"{client_name}_LoanChecklist.txt")
-
-# 页面底部联系信息
-st.markdown("---")
-st.markdown("""
-<div style='text-align: center; padding: 20px; color: #666;'>
-    <p>📧 If you have any questions or suggestions for improvement, please send an email to:<br>
-    <a href="mailto:henrywen98@gmail.com" style="color: #1f77b4; text-decoration: none;">henrywen98@gmail.com</a></p>
-</div>
-""", unsafe_allow_html=True)
