@@ -41,27 +41,37 @@ def fill_prompt(template: str, data: dict) -> str:
 def get_config_value(key: str, default_value: str = "") -> str:
     """
     优先级：环境变量 -> Streamlit Secrets -> 默认值
-    支持直接从 secrets 根级别读取（兼容直接粘贴 .env 内容的情况）
+    支持从 config 部分和对应服务商部分读取
     """
     # 1. 从环境变量读取
     env_value = os.getenv(key)
     if env_value:
         return env_value
     
-    # 2. 从 Streamlit Secrets 读取（支持多种格式）
+    # 2. 从 Streamlit Secrets 读取
     try:
-        # 方式1：直接从根级别读取（支持直接粘贴 .env 内容）
+        # 方式1：从 config 部分读取（您的配置格式）
+        if "config" in st.secrets and key in st.secrets["config"]:
+            return str(st.secrets["config"][key])
+        
+        # 方式2：从对应的服务商部分读取
+        if key.startswith("DEEPSEEK_") and "deepseek" in st.secrets:
+            sub_key = key.replace("DEEPSEEK_", "").lower()
+            if sub_key in st.secrets["deepseek"]:
+                return str(st.secrets["deepseek"][sub_key])
+                
+        if key.startswith("OPENAI_") and "openai" in st.secrets:
+            sub_key = key.replace("OPENAI_", "").lower()
+            if sub_key in st.secrets["openai"]:
+                return str(st.secrets["openai"][sub_key])
+        
+        # 方式3：直接从根级别读取
         if key in st.secrets:
             return str(st.secrets[key])
-        
-        # 方式2：从 config 部分读取
-        if "config" in st.secrets and key.lower() in st.secrets["config"]:
-            return str(st.secrets["config"][key.lower()])
-            
+                
     except Exception:
         pass
     
-    # 3. 返回默认值
     return default_value
 
 # 读取配置
@@ -69,33 +79,18 @@ provider = get_config_value("LLM_PROVIDER", "openai").lower()
 if provider not in ("openai", "deepseek"):
    provider = "openai"
 
-# 读取模型优先级：通用 LLM_MODEL -> provider-specific -> 默认值
-common_model = get_config_value("LLM_MODEL")
-
 # 读取通用参数
 temperature = float(get_config_value("TEMPERATURE", "0.2"))
 
 if provider == "deepseek":
     # DeepSeek 配置
     api_key = get_config_value("DEEPSEEK_API_KEY")
-    if not api_key:
-        try:
-            api_key = st.secrets.get("deepseek", {}).get("api_key")
-        except Exception:
-            pass
-    
-    model = common_model or get_config_value("DEEPSEEK_MODEL", "deepseek-chat")
+    model = get_config_value("DEEPSEEK_MODEL", "deepseek-chat")
     base_url = get_config_value("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 else:
     # OpenAI 配置
     api_key = get_config_value("OPENAI_API_KEY")
-    if not api_key:
-        try:
-            api_key = st.secrets.get("openai", {}).get("api_key")
-        except Exception:
-            pass
-    
-    model = common_model or get_config_value("OPENAI_MODEL", "gpt-4o-mini")
+    model = get_config_value("OPENAI_MODEL", "gpt-4o-mini")
     base_url = get_config_value("OPENAI_BASE_URL") or None
 
 if not api_key:

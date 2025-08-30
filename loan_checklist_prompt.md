@@ -82,8 +82,6 @@ Please provide the documents that are readily available first — we’ll guide 
 5. Client Information Form  
    • Refer to the attached form and complete as much as possible. Leave blank if unsure.  
 
-If there are any special circumstances (e.g. trust ownership, debt discharge, overseas income), please note them in the textbox provided.
-
 ---
 
 ## 🟦 【Client Information】
