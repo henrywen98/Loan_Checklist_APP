@@ -162,7 +162,7 @@ if submitted:
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; padding: 20px; color: #666;'>
-    <p>📧 如果有任何问题或改进建议，请发送邮件至：<br>
+    <p>📧 If you have any questions or suggestions for improvement, please send an email to:<br>
     <a href="mailto:henrywen98@gmail.com" style="color: #1f77b4; text-decoration: none;">henrywen98@gmail.com</a></p>
 </div>
 """, unsafe_allow_html=True)
