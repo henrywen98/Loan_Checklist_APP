@@ -38,20 +38,25 @@ def fill_prompt(template: str, data: dict) -> str:
         filled = filled.replace(f"{{{k}}}", str(v))
     return filled
 
+# 默认使用OpenAI
 provider = os.getenv("LLM_PROVIDER", "openai").lower()
 if provider not in ("openai", "deepseek"):
    provider = "openai"
 
+# 读取模型优先级：通用 LLM_MODEL -> provider-specific env var -> 默认值
+common_model = os.getenv("LLM_MODEL")
+
+# 读取通用参数
+temperature = float(os.getenv("TEMPERATURE", "0.2"))
+
 if provider == "deepseek":
-   # DeepSeek 配置
    api_key = os.getenv("DEEPSEEK_API_KEY")
-   model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
-   base_url = "https://api.deepseek.com"
+   model = common_model or os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+   base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 else:
-   # OpenAI 配置
    api_key = os.getenv("OPENAI_API_KEY")
-   model = os.getenv("OPENAI_MODEL", "gpt-5-mini")
-   base_url = None
+   model = common_model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+   base_url = os.getenv("OPENAI_BASE_URL") or None
 
 # 兜底：若 .env 未提供，尝试从 st.secrets 读取
 if not api_key:
@@ -70,6 +75,15 @@ if not api_key:
    st.stop()
 
 client = OpenAI(api_key=api_key, base_url=base_url)
+
+# 显示当前配置信息
+with st.expander("🔧 Current Configuration", expanded=False):
+    st.write(f"**Provider:** {provider}")
+    st.write(f"**Model:** {model}")
+    st.write(f"**Temperature:** {temperature}")
+    if base_url:
+        st.write(f"**Base URL:** {base_url}")
+    st.write(f"**API Key:** {'✅ Set' if api_key else '❌ Not Set'}")
 
 # 表单输入
 with st.form("client_form"):
@@ -95,18 +109,15 @@ if submitted:
     prompt = fill_prompt(template, data)
 
     with st.spinner("Generating checklist..."):
-        # 根据供应商决定是否包含温度参数
+        # 构建请求参数，从 .env 文件读取配置
         chat_kwargs = {
             "model": model,
             "messages": [
                 {"role": "system", "content": "You are an expert mortgage broker assistant."},
                 {"role": "user", "content": prompt},
             ],
+            "temperature": temperature,
         }
-        
-        # 只有 DeepSeek 支持温度参数，OpenAI 会报错
-        if provider == "deepseek":
-            chat_kwargs["temperature"] = 0.2
             
         response = client.chat.completions.create(**chat_kwargs)
 
