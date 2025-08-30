@@ -157,3 +157,12 @@ if submitted:
     st.markdown("### ✅ Checklist Output")
     st.code(checklist, language="markdown")
     st.download_button("Download Checklist", checklist, file_name=f"{client_name}_LoanChecklist.txt")
+
+# 页面底部联系信息
+st.markdown("---")
+st.markdown("""
+<div style='text-align: center; padding: 20px; color: #666;'>
+    <p>📧 如果有任何问题或改进建议，请发送邮件至：<br>
+    <a href="mailto:henrywen98@gmail.com" style="color: #1f77b4; text-decoration: none;">henrywen98@gmail.com</a></p>
+</div>
+""", unsafe_allow_html=True)
