@@ -11,7 +11,7 @@ st.set_page_config(page_title="Loan Checklist Generator", page_icon="📝")
 st.title("📝 Loan Document Checklist Generator")
 st.markdown("Easily generate a professional loan document checklist based on client information.")
 
-# 加载 .env 并根据环境变量选择供应商与模型（deepseek 或 gpt-5-mini）
+# 加载 .env（仅本地开发使用）
 load_dotenv()
 
 APP_DIR = Path(__file__).parent
@@ -38,39 +38,69 @@ def fill_prompt(template: str, data: dict) -> str:
         filled = filled.replace(f"{{{k}}}", str(v))
     return filled
 
-# 默认使用OpenAI
-provider = os.getenv("LLM_PROVIDER", "openai").lower()
+def get_config_value(key: str, default_value: str = "") -> str:
+    """
+    优先级：环境变量 -> Streamlit Secrets -> 默认值
+    支持直接从 secrets 根级别读取（兼容直接粘贴 .env 内容的情况）
+    """
+    # 1. 从环境变量读取
+    env_value = os.getenv(key)
+    if env_value:
+        return env_value
+    
+    # 2. 从 Streamlit Secrets 读取（支持多种格式）
+    try:
+        # 方式1：直接从根级别读取（支持直接粘贴 .env 内容）
+        if key in st.secrets:
+            return str(st.secrets[key])
+        
+        # 方式2：从 config 部分读取
+        if "config" in st.secrets and key.lower() in st.secrets["config"]:
+            return str(st.secrets["config"][key.lower()])
+            
+    except Exception:
+        pass
+    
+    # 3. 返回默认值
+    return default_value
+
+# 读取配置
+provider = get_config_value("LLM_PROVIDER", "openai").lower()
 if provider not in ("openai", "deepseek"):
    provider = "openai"
 
-# 读取模型优先级：通用 LLM_MODEL -> provider-specific env var -> 默认值
-common_model = os.getenv("LLM_MODEL")
+# 读取模型优先级：通用 LLM_MODEL -> provider-specific -> 默认值
+common_model = get_config_value("LLM_MODEL")
 
 # 读取通用参数
-temperature = float(os.getenv("TEMPERATURE", "0.2"))
+temperature = float(get_config_value("TEMPERATURE", "0.2"))
 
 if provider == "deepseek":
-   api_key = os.getenv("DEEPSEEK_API_KEY")
-   model = common_model or os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
-   base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+    # DeepSeek 配置
+    api_key = get_config_value("DEEPSEEK_API_KEY")
+    if not api_key:
+        try:
+            api_key = st.secrets.get("deepseek", {}).get("api_key")
+        except Exception:
+            pass
+    
+    model = common_model or get_config_value("DEEPSEEK_MODEL", "deepseek-chat")
+    base_url = get_config_value("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 else:
-   api_key = os.getenv("OPENAI_API_KEY")
-   model = common_model or os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-   base_url = os.getenv("OPENAI_BASE_URL") or None
-
-# 兜底：若 .env 未提供，尝试从 st.secrets 读取
-if not api_key:
-   try:
-      if provider == "deepseek":
-         api_key = st.secrets.get("deepseek", {}).get("api_key")
-      else:
-         api_key = st.secrets.get("openai", {}).get("api_key")
-   except Exception:
-      pass
+    # OpenAI 配置
+    api_key = get_config_value("OPENAI_API_KEY")
+    if not api_key:
+        try:
+            api_key = st.secrets.get("openai", {}).get("api_key")
+        except Exception:
+            pass
+    
+    model = common_model or get_config_value("OPENAI_MODEL", "gpt-4o-mini")
+    base_url = get_config_value("OPENAI_BASE_URL") or None
 
 if not api_key:
    st.error(
-      "Missing API key. Set LLM_PROVIDER to 'openai' or 'deepseek' in .env and provide the corresponding API key (OPENAI_API_KEY or DEEPSEEK_API_KEY)."
+      "Missing API key. Please configure your API keys in Streamlit secrets or environment variables."
    )
    st.stop()
 
@@ -109,7 +139,7 @@ if submitted:
     prompt = fill_prompt(template, data)
 
     with st.spinner("Generating checklist..."):
-        # 构建请求参数，从 .env 文件读取配置
+        # 构建请求参数
         chat_kwargs = {
             "model": model,
             "messages": [
