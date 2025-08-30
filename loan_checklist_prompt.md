@@ -40,8 +40,7 @@ Ask the client to reply with their **full legal name** (as shown on ID) and **mo
 * At least the last 2 months of bank account statements
 
 **▸ Rental Income** (if applicable)  
-* Preferred: Last 3 months’ rental statements  
-* If unavailable ➔ Agent’s appraisal with notes  
+* Last 3 months’ rental statements(If unavailable ➔ Agent’s appraisal)
 
 ---
 
